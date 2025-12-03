@@ -7,7 +7,7 @@ from livekit.plugins import (
     noise_cancellation,
 )
 from prompts import INTERVIEW_PROMPTS
-from livekit.plugins import tavus
+from livekit.plugins import tavus, bey
 import os
 import json
 import asyncio
@@ -62,16 +62,44 @@ async def my_agent(ctx: agents.JobContext):
     # Create assistant with the correct type
     assistant = Assistant(interview_type=interview_type)
 
+    # Initialize Tavus session
     avatar = tavus.AvatarSession(
         replica_id=os.environ.get("REPLICA_ID"),
         persona_id=os.environ.get("PERSONA_ID"),
         api_key=os.environ.get("TAVUS_API_KEY"),
     )
     
+    # Fallback logic
     try:
+        print("[AGENT] Attempting to start Tavus avatar...")
         await avatar.start(session, room=ctx.room)
+        print("[AGENT] Tavus avatar started successfully.")
     except Exception as e:
-        print(f"[AGENT] Avatar failed to start: {e}")
+        error_msg = str(e).lower()
+        print(f"[AGENT] Tavus failed to start: {e}")
+        
+        # Check for specific failure conditions to trigger fallback
+        fallback_triggers = [
+            "credits", "limit", "fallback triggered", "quota", 
+            "provider unavailable", "payment required", "avatar error"
+        ]
+        
+        # Check if error message contains any trigger words OR if we want to be safe and fallback on any start error
+        if any(trigger in error_msg for trigger in fallback_triggers) or True: # Using True to ensure fallback on ANY error for now
+            print("[AGENT] Triggering fallback to Beyond Presence...")
+            try:
+                # Initialize Beyond Presence session
+                # Using default or placeholder ID if not specified in env
+                bey_avatar = bey.AvatarSession(
+                    api_key=os.environ.get("BEY_API_KEY"),
+                    avatar_id=os.environ.get("BEY_AVATAR_ID"), 
+                )
+                await bey_avatar.start(session, room=ctx.room)
+                print("[AGENT] Beyond Presence avatar started successfully (Fallback).")
+            except Exception as fallback_error:
+                print(f"[AGENT] Fallback to Beyond Presence also failed: {fallback_error}")
+        else:
+            print("[AGENT] Tavus error did not trigger fallback criteria.")
 
     print(f"[AGENT] Starting session with interview type: {interview_type}")
     
