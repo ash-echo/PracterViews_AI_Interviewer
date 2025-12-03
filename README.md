@@ -34,21 +34,21 @@ graph TD
     end
     
     subgraph Core_Layer [🧠 NEURAL BACKEND]
-        Agent[🤖 Orchestrator Agent] ::: backend
-        TokenServer[🛡️ Sentinel Auth] ::: backend
+        Agent[🤖 Orchestrator Agent]
+        TokenServer[🛡️ Sentinel Auth]
         
         subgraph AI_Cluster [✨ GENERATIVE ENGINES]
-            Gemini[🧠 Gemini 2.0 Flash\n(Reasoning Core)] ::: ai
+            Gemini[🧠 Gemini 2.0 Flash\nReasoning Core]
             
             subgraph Avatar_System [🎭 DYNAMIC AVATAR PIPELINE]
-                Tavus[🗣️ TAVUS\n(High-Fidelity)] ::: ai
-                Bey[👻 BEYOND PRESENCE\n(Instant Fallback)] ::: ai
+                Tavus[🗣️ TAVUS\nHigh-Fidelity]
+                Bey[👻 BEYOND PRESENCE\nInstant Fallback]
             end
         end
     end
 
     %% Critical Paths
-    User <==>|WebRTC (Audio/Video)| Room
+    User <==>|WebRTC Audio/Video| Room
     Room <==>|WebSocket Stream| LK
     LK <==>|Data Channels| Agent
     
@@ -62,11 +62,18 @@ graph TD
     
     %% Visualizer
     Room -.->|Audio Data| Visualizer
+
+    %% Apply Styles
+    class User user
+    class Dashboard,Room,Visualizer frontend
+    class Agent,TokenServer backend
+    class Gemini,Tavus,Bey ai
+    class LK cloud
 ```
 
 ---
 
-## � Features That Defy Expectations
+## 💎 Features That Defy Expectations
 
 ### 🧠 **Hyper-Contextual Intelligence**
 Powered by **Google Gemini 2.0 Flash**, the agent doesn't just ask questions—it *understands* nuance.
