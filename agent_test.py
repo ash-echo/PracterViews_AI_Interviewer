@@ -5,7 +5,7 @@ import openai
 
 load_dotenv(".env")
 
-# Test basic OpenAI API access
+
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 try:
@@ -21,7 +21,7 @@ except Exception as e:
 
 print("\nNow testing if Realtime API is accessible...")
 try:
-    # Try to access realtime models (this might fail if not available)
+   
     models = client.models.list()
     realtime_models = [m for m in models.data if 'realtime' in m.id.lower()]
     if realtime_models:
