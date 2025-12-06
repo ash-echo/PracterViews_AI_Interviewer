@@ -47,7 +47,8 @@ async def my_agent(ctx: agents.JobContext):
     
    
     if "-interview" in room_name:
-        interview_type = room_name.replace("-interview", "")
+        # Extract type from "fullstack-interview-abc123" -> "fullstack"
+        interview_type = room_name.split("-interview")[0]
         print(f"[AGENT] Extracted interview type from room name: {interview_type}")
     else:
         interview_type = "default"
@@ -117,6 +118,45 @@ async def my_agent(ctx: agents.JobContext):
         ),
     )
     
+    # Data listener for receiving resume/GitHub data from frontend
+    @ctx.room.on("data_received")
+    def on_data_received(data: rtc.DataPacket):
+        try:
+            payload = json.loads(data.data.decode("utf-8"))
+            data_type = payload.get("type", "")
+            content = payload.get("content", "")
+            
+            print(f"[AGENT] Received data: type={data_type}, length={len(content)}")
+            
+            if data_type == "RESUME_DATA":
+                print(f"[AGENT] Processing resume data...")
+                # Inject resume context into the session
+                asyncio.create_task(session.generate_reply(
+                    instructions=f"""The candidate has shared their resume. Here is the content:
+
+--- RESUME START ---
+{content}
+--- RESUME END ---
+
+Acknowledge that you received their resume and ask a specific question about something mentioned in it (a technology, project, or experience). Be specific - reference actual content from the resume."""
+                ))
+                
+            elif data_type == "GITHUB_DATA":
+                print(f"[AGENT] Processing GitHub data...")
+                # Inject GitHub context into the session
+                asyncio.create_task(session.generate_reply(
+                    instructions=f"""The candidate has shared their GitHub profile. Here is the summary:
+
+--- GITHUB PROFILE ---
+{content}
+--- GITHUB END ---
+
+Acknowledge that you reviewed their GitHub and ask about a specific repository or project mentioned. Be specific - reference actual repos or technologies from the data."""
+                ))
+                
+        except Exception as e:
+            print(f"[AGENT] Error processing received data: {e}")
+    
     # Wait for a human participant to join before greeting
     print("[AGENT] Checking for human participants...")
     
@@ -143,9 +183,24 @@ async def my_agent(ctx: agents.JobContext):
     
     print(f"[AGENT] Generating greeting for interview type: {interview_type}")
     
-    await session.generate_reply(
-        instructions="Follow your system instructions exactly. Start with the OPENING statement defined in your instructions."
-    )
+    # Wait for session to stabilize before greeting
+    await asyncio.sleep(3)
+    
+    # Retry greeting up to 3 times if it fails
+    for attempt in range(3):
+        try:
+            print(f"[AGENT] Greeting attempt {attempt + 1}...")
+            await session.generate_reply(
+                instructions="Follow your system instructions exactly. Start with the OPENING statement defined in your instructions. Speak clearly and confidently."
+            )
+            print("[AGENT] Greeting sent successfully!")
+            break
+        except Exception as e:
+            print(f"[AGENT] Greeting attempt {attempt + 1} failed: {e}")
+            if attempt < 2:
+                await asyncio.sleep(2)  # Wait before retry
+            else:
+                print("[AGENT] All greeting attempts failed. Agent will respond when user speaks.")
 
 
 if __name__ == "__main__":

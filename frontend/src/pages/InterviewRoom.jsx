@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { LiveKitRoom, useTracks, VideoTrack, useRoomContext, RoomAudioRenderer, useIsSpeaking } from '@livekit/components-react';
 import { Track } from 'livekit-client';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2, Sparkles } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2, Sparkles, FileText } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Import asset components
+import ResumeUploader from '../components/ResumeUploader';
+import GithubInput from '../components/GithubInput';
 
 const SERVER_URL = 'wss://practerview-qgcp05tt.livekit.cloud';
 
@@ -11,8 +15,13 @@ const InterviewRoom = () => {
     const [token, setToken] = useState("");
     const navigate = useNavigate();
     const { type } = useParams();
+    const hasFetched = React.useRef(false);
 
     useEffect(() => {
+        // Prevent double fetch from React StrictMode
+        if (hasFetched.current) return;
+        hasFetched.current = true;
+
         const fetchToken = async () => {
             try {
                 const response = await fetch(`http://localhost:3000/getToken?type=${type || 'default'}`);
@@ -72,8 +81,8 @@ const ParticipantTile = ({ track, participant, isLocal }) => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
             className={`relative w-full h-full bg-[#121214] rounded-3xl overflow-hidden border transition-all duration-300 ease-in-out flex flex-col items-center justify-center group ${isSpeaking
-                    ? 'border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)]'
-                    : 'border-white/10 hover:border-white/20'
+                ? 'border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)]'
+                : 'border-white/10 hover:border-white/20'
                 }`}
         >
             {track ? (
@@ -109,6 +118,7 @@ const RoomContent = () => {
     const room = useRoomContext();
     const [isMicOn, setIsMicOn] = useState(true);
     const [isCamOn, setIsCamOn] = useState(true);
+    const [showAssets, setShowAssets] = useState(false);
 
     const toggleMic = async () => {
         if (room.localParticipant) {
@@ -154,8 +164,24 @@ const RoomContent = () => {
                         </div>
                     </div>
                 </div>
-                <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-full text-sm text-gray-300 backdrop-blur-sm">
-                    {agentParticipant ? "Connected" : "Waiting for Interviewer..."}
+
+                <div className="flex items-center gap-3">
+                    {/* Assets Toggle Button */}
+                    <button
+                        onClick={() => setShowAssets(!showAssets)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${showAssets
+                            ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400'
+                            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:border-white/20'
+                            }`}
+                    >
+                        <FileText className="w-4 h-4" />
+                        Assets
+                    </button>
+
+                    {/* Connection Status */}
+                    <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-full text-sm text-gray-300 backdrop-blur-sm">
+                        {agentParticipant ? "Connected" : "Waiting for Interviewer..."}
+                    </div>
                 </div>
             </header>
 
@@ -211,6 +237,42 @@ const RoomContent = () => {
                     </div>
                 )}
 
+                {/* Sliding Assets Panel */}
+                <AnimatePresence>
+                    {showAssets && (
+                        <motion.div
+                            initial={{ x: 400, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: 400, opacity: 0 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="absolute right-0 top-0 h-full w-80 bg-[#121214]/95 backdrop-blur-xl border-l border-white/10 p-5 flex flex-col gap-6 z-50 shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-indigo-400" />
+                                    Interview Assets
+                                </h3>
+                                <button
+                                    onClick={() => setShowAssets(false)}
+                                    className="text-gray-500 hover:text-white transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <p className="text-xs text-gray-500 bg-white/5 p-3 rounded-xl border border-white/5">
+                                Upload your resume or link your GitHub to help the interviewer ask personalized questions.
+                            </p>
+
+                            <ResumeUploader />
+
+                            <div className="w-full h-px bg-white/10" />
+
+                            <GithubInput />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
             </div>
 
             {/* Bottom Controls */}
@@ -226,8 +288,8 @@ const RoomContent = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         className={`p-4 rounded-full transition-all duration-300 ${isMicOn
-                                ? 'bg-white/10 hover:bg-white/20 text-white'
-                                : 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
+                            ? 'bg-white/10 hover:bg-white/20 text-white'
+                            : 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
                             }`}
                         title={isMicOn ? "Mute Microphone" : "Unmute Microphone"}
                     >
@@ -239,8 +301,8 @@ const RoomContent = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         className={`p-4 rounded-full transition-all duration-300 ${isCamOn
-                                ? 'bg-white/10 hover:bg-white/20 text-white'
-                                : 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
+                            ? 'bg-white/10 hover:bg-white/20 text-white'
+                            : 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
                             }`}
                         title={isCamOn ? "Turn Off Camera" : "Turn On Camera"}
                     >

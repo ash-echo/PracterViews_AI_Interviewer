@@ -31,16 +31,16 @@ class TokenHandler(BaseHTTPRequestHandler):
                 
                 
                 import uuid
-                participant_identity = f"user-{str(uuid.uuid4())[:8]}"
+                session_id = str(uuid.uuid4())[:8]
+                participant_identity = f"user-{session_id}"
                 participant_name = "Candidate"
 
-                
                 metadata = json.dumps({"type": interview_type})
                 
-              
-                room_name = f"{interview_type}-interview"
+                # Unique room name for each session
+                room_name = f"{interview_type}-interview-{session_id}"
                 
-                print(f"[TOKEN_SERVER] Generating token for room: {room_name}, type: {interview_type}")
+                print(f"[TOKEN_SERVER] New session: {room_name}")
 
                 token.with_identity(participant_identity) \
                     .with_name(participant_name) \
