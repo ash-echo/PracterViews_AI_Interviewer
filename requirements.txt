@@ -6,3 +6,4 @@ requests
 python-dotenv
 pydantic-ai-slim[openai,mcp]
 livekit-agents[tavus]~=1.0
+livekit-plugins-bey
