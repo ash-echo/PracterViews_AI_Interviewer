@@ -122,9 +122,37 @@ Built using **React 18 + Vite**, animated with **Framer Motion**, and styled usi
 
 #  Deployment Protocol
 
-## Phase 1 — Environment Injection
+## Phase 1 — Installation
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+# Return to project root
+cd ..
+```
+
+### Backend Setup
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate (Windows)
+.\venv\Scripts\Activate
+
+# Activate (Mac/Linux)
+# source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+---
+
+## Phase 2 — Environment Injection
 
 Create a `.env` file:
+
 
 ```env
 # LiveKit Cloud
