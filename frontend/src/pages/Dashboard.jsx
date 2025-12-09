@@ -5,6 +5,7 @@ import {
     Zap, Terminal, Cpu, GitBranch, Command, Activity, Radio
 } from 'lucide-react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import ParticleBackground from '../components/ParticleBackground';
 
 const TiltCard = ({ children, className, onClick, delay = 0 }) => {
     const x = useMotionValue(0);
@@ -147,7 +148,11 @@ const Dashboard = () => {
     ];
 
     return (
-        <div
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, x: -50, filter: "blur(10px)" }}
+            transition={{ duration: 0.5 }}
             className="min-h-screen bg-[#030014] text-foreground p-6 md:p-12 font-sans selection:bg-purple-500/50 relative overflow-hidden perspective-container group"
             onMouseMove={handleGlobalMouseMove}
         >
@@ -161,6 +166,9 @@ const Dashboard = () => {
                     )
                 }}
             />
+
+            {/* Particle Background */}
+            <ParticleBackground />
 
             {/* 3D Grid & Ambient Background */}
             <div className="fixed inset-0 z-0 pointer-events-none">
@@ -277,7 +285,7 @@ const Dashboard = () => {
                     </div>
                 </section>
             </main>
-        </div>
+        </motion.div>
     );
 };
 

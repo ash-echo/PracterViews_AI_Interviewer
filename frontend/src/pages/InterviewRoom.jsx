@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Import asset components
 import ResumeUploader from '../components/ResumeUploader';
 import GithubInput from '../components/GithubInput';
+import ParticleBackground from '../components/ParticleBackground';
 
 const SERVER_URL = 'wss://practerview-qgcp05tt.livekit.cloud';
 
@@ -150,8 +151,17 @@ const InterviewRoom = () => {
             className="h-screen w-full bg-[#030014] overflow-hidden relative font-sans"
             onDisconnected={() => navigate('/')}
         >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
+                transition={{ duration: 0.8, ease: "circOut" }}
+                className="absolute inset-0 z-0"
+            />
+
             {/* Ambient Background & Grid */}
             <div className="absolute inset-0 z-0 pointer-events-none">
+                <ParticleBackground />
                 <div className="perspective-grid opacity-30" />
                 <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/10 blur-[120px]" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[120px]" />
