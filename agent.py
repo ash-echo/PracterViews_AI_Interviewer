@@ -24,7 +24,7 @@ server = AgentServer()
 @server.rtc_session()
 async def my_agent(ctx: agents.JobContext):
     gemini_model = google.realtime.RealtimeModel(
-        voice="Puck",  
+        voice="Puck",
         model="gemini-2.5-flash-native-audio-preview-09-2025"
     )
 
@@ -184,14 +184,14 @@ Acknowledge that you reviewed their GitHub and ask about a specific repository o
     print(f"[AGENT] Generating greeting for interview type: {interview_type}")
     
     # Wait for session to stabilize before greeting
-    await asyncio.sleep(3)
+    await asyncio.sleep(2)
     
     # Retry greeting up to 3 times if it fails
     for attempt in range(3):
         try:
             print(f"[AGENT] Greeting attempt {attempt + 1}...")
             await session.generate_reply(
-                instructions="Follow your system instructions exactly. Start with the OPENING statement defined in your instructions. Speak clearly and confidently."
+                instructions="Introduce yourself as the interviewer and start the interview."
             )
             print("[AGENT] Greeting sent successfully!")
             break
