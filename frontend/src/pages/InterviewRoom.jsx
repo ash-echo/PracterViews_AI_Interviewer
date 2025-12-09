@@ -411,7 +411,8 @@ public:
         report: '📊 Final Report'
     };
     const PHASE_WEIGHTS = { resume: 15, github: 15, topic: 25, coding: 45 };
-    const QUESTIONS_PER_PHASE = { resume: 2, github: 2, topic: 2, coding: 1 };
+    // Total: 2 + 2 + 1 + 1 = 6 questions max
+    const QUESTIONS_PER_PHASE = { resume: 2, github: 2, topic: 1, coding: 1 };
 
     const [interviewPhase, setInterviewPhase] = useState('introduction');
     const [phaseScores, setPhaseScores] = useState({
@@ -605,11 +606,18 @@ public:
                     setEvaluationResult(null);
                     // Auto-open IDE when a new coding question is received
                     setShowIDE(true);
+                    // Set phase to coding when coding question is received
+                    setInterviewPhase('coding');
                 } else if (data.type === 'next_question') {
                     // Interviewer requests next question for the track
                     setCurrentQuestion(getRandomQuestion(interviewTrack));
                     setEvaluationResult(null);
                     setShowIDE(true);
+                } else if (data.type === 'PHASE_UPDATE') {
+                    // Sync phase with agent
+                    if (data.phase && PHASES.includes(data.phase)) {
+                        setInterviewPhase(data.phase);
+                    }
                 }
             } catch (error) {
                 console.error('Error parsing question data:', error);
@@ -1131,33 +1139,38 @@ public:
                 </motion.div>
             </div>
 
-            {/* Skip Interview Button - Fixed Lower Right */}
-            {interviewPhase !== 'report' && (
-                <motion.button
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.05 }}
-                    onClick={handleSkipInterview}
-                    className="fixed bottom-6 right-6 px-5 py-3 bg-yellow-600/90 hover:bg-yellow-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg shadow-yellow-900/30 border border-yellow-500/50 z-50"
-                >
-                    <span>⏭️</span>
-                    Skip to Report
-                </motion.button>
-            )}
+            {/* Navigation Buttons - Circular with arrows */}
+            <div className="fixed bottom-6 right-6 flex items-center gap-3 z-50">
+                {/* Next Phase Button (single arrow) - Only show if not in report or coding */}
+                {interviewPhase !== 'report' && interviewPhase !== 'coding' && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={advancePhase}
+                        className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border border-blue-500/50 flex items-center justify-center text-lg font-bold"
+                        title="Next Phase"
+                    >
+                        →
+                    </motion.button>
+                )}
 
-            {/* Next Phase Button - Fixed Lower Right (next to skip) */}
-            {interviewPhase !== 'report' && interviewPhase !== 'coding' && (
-                <motion.button
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.05 }}
-                    onClick={advancePhase}
-                    className="fixed bottom-6 right-48 px-5 py-3 bg-blue-600/90 hover:bg-blue-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg shadow-blue-900/30 border border-blue-500/50 z-50"
-                >
-                    <span>➡️</span>
-                    Next Phase
-                </motion.button>
-            )}
+                {/* Skip to Report Button (double arrow) - Show if not in report */}
+                {interviewPhase !== 'report' && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleSkipInterview}
+                        className="w-12 h-12 rounded-full bg-yellow-600 hover:bg-yellow-500 text-white shadow-lg shadow-yellow-900/40 border border-yellow-500/50 flex items-center justify-center text-lg font-bold"
+                        title="Skip to Report"
+                    >
+                        ⏭
+                    </motion.button>
+                )}
+            </div>
 
             {/* Final Report Panel - Shows when interview is complete */}
             <AnimatePresence>
@@ -1504,26 +1517,39 @@ public:
                                     </button>
                                 </div>
 
-                                <textarea
-                                    value={codeContent}
-                                    onChange={(e) => setCodeContent(e.target.value)}
-                                    className="flex-1 bg-[#161b22] border border-gray-700 rounded p-4 font-mono text-sm text-white resize-none focus:outline-none focus:border-blue-500 overflow-auto"
-                                    spellCheck={false}
-                                    placeholder="Write your solution here..."
-                                />
+                                {interviewPhase === 'coding' ? (
+                                    <textarea
+                                        value={codeContent}
+                                        onChange={(e) => setCodeContent(e.target.value)}
+                                        className="flex-1 bg-[#161b22] border border-gray-700 rounded p-4 font-mono text-sm text-white resize-none focus:outline-none focus:border-blue-500 overflow-auto"
+                                        spellCheck={false}
+                                        placeholder="Write your solution here..."
+                                    />
+                                ) : (
+                                    <div className="flex-1 bg-[#161b22] border border-gray-700 rounded p-4 flex flex-col items-center justify-center text-center">
+                                        <div className="text-4xl mb-3">⏳</div>
+                                        <p className="text-gray-400 text-sm">Code editor will be available</p>
+                                        <p className="text-gray-400 text-sm">during the Coding Round</p>
+                                    </div>
+                                )}
 
                                 {/* Run Code Button Only */}
                                 <div className="mt-4">
                                     <button
-                                        onClick={() => evaluateCode(codeContent)}
-                                        disabled={isEvaluating}
-                                        className="px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                        onClick={() => interviewPhase === 'coding' && evaluateCode(codeContent)}
+                                        disabled={isEvaluating || interviewPhase !== 'coding'}
+                                        className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${interviewPhase === 'coding'
+                                            ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
+                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                            }`}
                                     >
                                         {isEvaluating ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                 Analyzing Code...
                                             </>
+                                        ) : interviewPhase !== 'coding' ? (
+                                            '🔒 Run Code'
                                         ) : (
                                             '▶ Run Code'
                                         )}
