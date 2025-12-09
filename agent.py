@@ -217,8 +217,8 @@ You must ask exactly {questions_required} technical questions.
 These should test their knowledge depth. Ask follow-up questions based on their answers.""",
 
                     "coding": """START SPEAKING NOW. Announce the Coding Round.
-Say: "Alright! Time for the coding challenge. Please click the IDE button at the top of your screen to open the code editor. You'll see a coding problem there. Take your time to write your solution, and when you're ready, click 'Run Code' to submit it for evaluation. I'll review your solution once you're done. Good luck!"
-Wait for them to work on the problem.""",
+Say: "Excellent work on all your answers! Now it's time for your coding challenge. I've given you a problem in the IDE - you can find it by clicking the 'IDE' button at the top right of your screen, right next to the Assets button. Take your time to read the question carefully, write your solution, and when you're ready, click 'Run Code' to submit. I'll give you feedback once you're done. Good luck!"
+Wait quietly for them to complete the coding challenge.""",
 
                     "report": """START SPEAKING NOW. Conclude the interview.
 Say: "That concludes our interview! Thank you so much for your time today. You did great! Would you like me to give you a quick summary of how you performed, including your strengths and areas for improvement?"
@@ -238,6 +238,16 @@ Acknowledge this choice politely but note that skipping sections will result in 
 Say something like: "I see you've chosen to skip ahead. That's completely fine - I'll prepare your report now. Do keep in mind that skipped sections won't be scored. Thank you for your time today!"
 
 Keep it brief and non-judgmental."""
+                ))
+            
+            elif data_type == "INTERVIEW_COMPLETE":
+                print(f"[AGENT] Interview complete - showing final report")
+                asyncio.create_task(session.generate_reply(
+                    instructions="""START SPEAKING NOW. The interview is complete and the candidate can see their final report.
+
+Say: "Congratulations on completing the interview! You can now see your performance report on screen. I hope you found this experience valuable. Feel free to review your scores and feedback, and when you're ready, you can leave the interview by clicking the End Call button. Best of luck with your future endeavors! Thank you for your time today."
+
+Keep the tone warm and encouraging."""
                 ))
                 
         except Exception as e:

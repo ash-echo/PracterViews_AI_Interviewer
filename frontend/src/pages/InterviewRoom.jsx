@@ -1020,38 +1020,6 @@ public:
                 </div>
             </header>
 
-            {/* Phase Progress Indicator */}
-            <div className="mb-4 px-2">
-                <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">{PHASE_LABELS[interviewPhase]}</span>
-                    <span className="text-xs text-gray-400">
-                        Phase {PHASES.indexOf(interviewPhase) + 1} of {PHASES.length}
-                    </span>
-                </div>
-                <div className="flex gap-1">
-                    {PHASES.map((phase, index) => (
-                        <div
-                            key={phase}
-                            className={`h-2 flex-1 rounded-full transition-all duration-300 ${index < PHASES.indexOf(interviewPhase)
-                                ? 'bg-green-500'
-                                : index === PHASES.indexOf(interviewPhase)
-                                    ? 'bg-blue-500 animate-pulse'
-                                    : 'bg-gray-700'
-                                }`}
-                            title={PHASE_LABELS[phase]}
-                        />
-                    ))}
-                </div>
-                <div className="flex justify-between mt-1 text-[10px] text-gray-500">
-                    <span>Intro</span>
-                    <span>Resume</span>
-                    <span>GitHub</span>
-                    <span>Topic</span>
-                    <span>Coding</span>
-                    <span>Report</span>
-                </div>
-            </div>
-
             {/* Main Stage - Discord Grid Layout */}
             <div className="flex-1 flex flex-col justify-center min-h-0 relative z-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full h-full max-h-[80vh]">
@@ -1453,59 +1421,42 @@ public:
                             <div className="w-1/3 bg-gray-100 p-6 border-r border-gray-300 rounded-l-lg overflow-y-auto">
                                 <h2 className="text-lg font-bold text-gray-800 mb-4">Question</h2>
 
-                                {interviewPhase === 'coding' ? (
-                                    // Show actual question only in coding phase
-                                    <div className="mb-6">
-                                        <h3 className="font-semibold text-gray-800 mb-2">{currentQuestion.title}</h3>
-                                        <p className="text-sm text-gray-600 mb-4">
-                                            {currentQuestion.description}
-                                        </p>
+                                {/* Always show the question */}
+                                <div className="mb-6">
+                                    <h3 className="font-semibold text-gray-800 mb-2">{currentQuestion.title}</h3>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        {currentQuestion.description}
+                                    </p>
 
-                                        {currentQuestion.examples.length > 0 && (
-                                            <div className="space-y-3 text-sm text-gray-600">
-                                                {currentQuestion.examples.map((example, index) => (
-                                                    <div key={index}>
-                                                        <strong>Example {index + 1}:</strong><br />
-                                                        <span className="font-mono bg-gray-200 px-1 rounded">Input: {example.input}</span><br />
-                                                        <span className="font-mono bg-gray-200 px-1 rounded">Output: {example.output}</span><br />
-                                                        {example.explanation && (
-                                                            <span className="text-xs">Explanation: {example.explanation}</span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {currentQuestion.constraints.length > 0 && (
-                                            <div className="mt-4 pt-4 border-t border-gray-300">
-                                                <h4 className="font-semibold text-gray-800 mb-2">Constraints:</h4>
-                                                <ul className="text-xs text-gray-600 space-y-1">
-                                                    {currentQuestion.constraints.map((constraint, index) => (
-                                                        <li key={index}>• {constraint}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    // Show placeholder for non-coding phases
-                                    <div className="flex flex-col items-center justify-center h-64 text-center">
-                                        <div className="text-6xl mb-4">🔒</div>
-                                        <h3 className="text-lg font-semibold text-gray-500 mb-2">
-                                            Available Only in Coding Round
-                                        </h3>
-                                        <p className="text-sm text-gray-400 max-w-xs">
-                                            Complete the {PHASE_LABELS[interviewPhase]} phase first.
-                                            The coding question will appear when you reach the Coding Round.
-                                        </p>
-                                        <div className="mt-4 px-4 py-2 bg-gray-200 rounded-full text-xs text-gray-500">
-                                            Current Phase: {PHASE_LABELS[interviewPhase]}
+                                    {currentQuestion.examples.length > 0 && (
+                                        <div className="space-y-3 text-sm text-gray-600">
+                                            {currentQuestion.examples.map((example, index) => (
+                                                <div key={index}>
+                                                    <strong>Example {index + 1}:</strong><br />
+                                                    <span className="font-mono bg-gray-200 px-1 rounded">Input: {example.input}</span><br />
+                                                    <span className="font-mono bg-gray-200 px-1 rounded">Output: {example.output}</span><br />
+                                                    {example.explanation && (
+                                                        <span className="text-xs">Explanation: {example.explanation}</span>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+
+                                    {currentQuestion.constraints.length > 0 && (
+                                        <div className="mt-4">
+                                            <strong className="text-gray-700">Constraints:</strong>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
+                                                {currentQuestion.constraints.map((constraint, index) => (
+                                                    <li key={index}>{constraint}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Code Editor */}
+                            {/* Code Editor - Always Available */}
                             <div className="flex-1 bg-[#0d1117] text-white p-4 flex flex-col">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-sm font-semibold text-gray-300">Solution</h3>
@@ -1517,39 +1468,26 @@ public:
                                     </button>
                                 </div>
 
-                                {interviewPhase === 'coding' ? (
-                                    <textarea
-                                        value={codeContent}
-                                        onChange={(e) => setCodeContent(e.target.value)}
-                                        className="flex-1 bg-[#161b22] border border-gray-700 rounded p-4 font-mono text-sm text-white resize-none focus:outline-none focus:border-blue-500 overflow-auto"
-                                        spellCheck={false}
-                                        placeholder="Write your solution here..."
-                                    />
-                                ) : (
-                                    <div className="flex-1 bg-[#161b22] border border-gray-700 rounded p-4 flex flex-col items-center justify-center text-center">
-                                        <div className="text-4xl mb-3">⏳</div>
-                                        <p className="text-gray-400 text-sm">Code editor will be available</p>
-                                        <p className="text-gray-400 text-sm">during the Coding Round</p>
-                                    </div>
-                                )}
+                                <textarea
+                                    value={codeContent}
+                                    onChange={(e) => setCodeContent(e.target.value)}
+                                    className="flex-1 bg-[#161b22] border border-gray-700 rounded p-4 font-mono text-sm text-white resize-none focus:outline-none focus:border-blue-500 overflow-auto"
+                                    spellCheck={false}
+                                    placeholder="Write your solution here..."
+                                />
 
-                                {/* Run Code Button Only */}
+                                {/* Run Code Button - Always Active */}
                                 <div className="mt-4">
                                     <button
-                                        onClick={() => interviewPhase === 'coding' && evaluateCode(codeContent)}
-                                        disabled={isEvaluating || interviewPhase !== 'coding'}
-                                        className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${interviewPhase === 'coding'
-                                            ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
-                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                            }`}
+                                        onClick={() => evaluateCode(codeContent)}
+                                        disabled={isEvaluating}
+                                        className="px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                                     >
                                         {isEvaluating ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                 Analyzing Code...
                                             </>
-                                        ) : interviewPhase !== 'coding' ? (
-                                            '🔒 Run Code'
                                         ) : (
                                             '▶ Run Code'
                                         )}
@@ -1739,18 +1677,31 @@ public:
                                 </div>
                             )}
 
-                            {/* Close Button */}
+                            {/* Close Button - Triggers Report Flow */}
                             <button
-                                onClick={() => setShowAnalysis(false)}
+                                onClick={() => {
+                                    setShowAnalysis(false);
+                                    setShowIDE(false);
+                                    setInterviewPhase('report');
+                                    // Notify agent to say goodbye
+                                    if (room && room.localParticipant) {
+                                        room.localParticipant.publishData(
+                                            new TextEncoder().encode(JSON.stringify({
+                                                type: 'INTERVIEW_COMPLETE',
+                                                message: 'Interview finished, show final report'
+                                            })),
+                                            { reliable: true }
+                                        );
+                                    }
+                                }}
                                 className="w-full mt-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-medium transition-all"
                             >
-                                Continue Coding
+                                View Final Report
                             </button>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </div>
     );
 };
