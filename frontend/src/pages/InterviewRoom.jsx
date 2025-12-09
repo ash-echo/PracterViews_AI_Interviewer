@@ -20,44 +20,62 @@ const InterviewRoom = () => {
     const { type } = useParams();
     const hasFetched = React.useRef(false);
 
-    const loadingMessages = [
-        { title: "PREPARING INTERVIEW WORKSPACE", sub: "Aligning evaluation criteria with session parameters..." },
-        { title: "SETTING UP ASSESSMENT FLOW", sub: "Gathering required resources for interview analysis..." },
-        { title: "REVIEWING CANDIDATE INPUTS", sub: "Ensuring secure session communication channel..." },
-        { title: "LOADING INTERVIEW FRAMEWORK", sub: "Compiling task modules and question sets..." },
-        { title: "INITIALIZING MEETING PROTOCOL", sub: "Setting up adaptive difficulty engine..." },
-        { title: "PREPARING EVALUATION MODULES", sub: "Preparing personalized interview metrics..." },
-        { title: "SYNCHRONIZING INTERVIEW SYSTEM", sub: "Optimizing system for real-time interaction..." },
-        { title: "ACTIVATING INTERVIEW SESSION", sub: "Running environment diagnostics and checks..." },
-        { title: "CALIBRATING RESPONSE ENGINE", sub: "Updating context models for accuracy..." },
-        { title: "VERIFYING SYSTEM READINESS", sub: "Finalizing assessment workflow initialization..." }
+    // Ordered 10-Step Sequence
+    const loadingSteps = [
+        { title: "INITIALIZING SESSION WORKSPACE", sub: "Allocating secure environment resources..." },
+        { title: "ESTABLISHING SECURE UPLINK", sub: "Verifying encrypted handshake protocols..." },
+        { title: "LOADING ASSESSMENT MODULES", sub: "Retrieving role-specific evaluation criteria..." },
+        { title: "SYNCHRONIZING CONTEXT ENGINE", sub: "Injecting resume data and technical parameters..." },
+        { title: "CALIBRATING AI MODELS", sub: "Optimizing neural response latency..." },
+        { title: "CONFIGURING AUDIO STREAMS", sub: "Setting up noise cancellation inputs..." },
+        { title: "GENERATING INTERVIEW GRAPH", sub: "Building dynamic question logic pathways..." },
+        { title: "VERIFYING SYSTEM INTEGRITY", sub: "Running final diagnostic checks..." },
+        { title: "BUFFERING ASSETS", sub: "Pre-loading high-fidelity interface elements..." },
+        { title: "LAUNCHING SEQUENCED PROTOCOL", sub: "Activating live simulation interface..." }
     ];
 
-    // Stable random message selection (only runs once on mount)
-    const [loadingText] = useState(() => {
-        const randomIndex = Math.floor(Math.random() * loadingMessages.length);
-        return loadingMessages[randomIndex];
-    });
+    const [currentStep, setCurrentStep] = useState(0);
+    const [tokenReady, setTokenReady] = useState(null);
 
+    // 1. Fetch Token Immediately (Background)
     useEffect(() => {
         if (hasFetched.current) return;
         hasFetched.current = true;
 
         const fetchToken = async () => {
             try {
-                // Enforce a minimum loading time of 2 seconds for the "cycle"
-                const minDelay = new Promise(resolve => setTimeout(resolve, 2000));
-
-                const tokenResponse = fetch(`http://localhost:3000/getToken?type=${type || 'default'}`).then(res => res.json());
-
-                const [_, data] = await Promise.all([minDelay, tokenResponse]);
-                setToken(data.token);
+                const response = await fetch(`http://localhost:3000/getToken?type=${type || 'default'}`);
+                const data = await response.json();
+                setTokenReady(data.token);
             } catch (error) {
                 console.error("Failed to fetch token:", error);
             }
         };
         fetchToken();
     }, [type]);
+
+    // 2. Run Sequence Animation
+    useEffect(() => {
+        if (currentStep < loadingSteps.length - 1) {
+            const timer = setTimeout(() => {
+                setCurrentStep(prev => prev + 1);
+            }, 600); // 600ms per step = ~6 seconds total
+            return () => clearTimeout(timer);
+        } else if (currentStep === loadingSteps.length - 1) {
+            // Sequence done. Check if token is ready.
+            if (tokenReady) {
+                // Add a small delay for the final step to be readable before switching
+                const finalDelay = setTimeout(() => {
+                    setToken(tokenReady);
+                }, 800);
+                return () => clearTimeout(finalDelay);
+            }
+            // If token not ready yet, it will wait here until tokenReady changes
+        }
+    }, [currentStep, tokenReady]);
+
+    const activeStep = loadingSteps[currentStep];
+    const progress = ((currentStep + 1) / loadingSteps.length) * 100;
 
     if (!token) {
         return (
@@ -67,9 +85,10 @@ const InterviewRoom = () => {
                     <div className="absolute top-[20%] left-[20%] w-[30%] h-[30%] rounded-full bg-indigo-600/20 blur-[100px] animate-pulse-slow" />
                 </div>
                 <motion.div
+                    key="loader"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center gap-6 z-10 glass-panel p-12 rounded-3xl border-white/10 shadow-2xl relative"
+                    className="flex flex-col items-center gap-8 z-10 glass-panel p-12 rounded-3xl border-white/10 shadow-2xl relative w-full max-w-xl"
                 >
                     <div className="absolute inset-0 z-0 pointer-events-none rounded-3xl overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent animate-border-beam" />
@@ -82,11 +101,39 @@ const InterviewRoom = () => {
                             <Cpu className="w-8 h-8 text-white animate-pulse" />
                         </div>
                     </div>
-                    <div className="text-center">
-                        <h2 className="text-2xl font-display font-bold mb-2 tracking-tight uppercase">{loadingText.title}</h2>
-                        <p className="text-indigo-300 font-mono text-xs tracking-widest uppercase animate-pulse">
-                            {loadingText.sub}
-                        </p>
+
+                    <div className="text-center space-y-4 w-full">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeStep.title} // Triggers animation on change
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                                className="space-y-2"
+                            >
+                                <h2 className="text-2xl font-display font-bold tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                                    {activeStep.title}
+                                </h2>
+                                <p className="text-indigo-400 font-mono text-xs tracking-widest uppercase">
+                                    {activeStep.sub}
+                                </p>
+                            </motion.div>
+                        </AnimatePresence>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-6">
+                            <motion.div
+                                className="h-full bg-indigo-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 0.5, ease: "linear" }}
+                            />
+                        </div>
+                        <div className="flex justify-between text-[10px] font-mono text-muted uppercase">
+                            <span>Step {currentStep + 1}/{loadingSteps.length}</span>
+                            <span>{Math.round(progress)}%</span>
+                        </div>
                     </div>
                 </motion.div>
             </div>
@@ -116,6 +163,7 @@ const InterviewRoom = () => {
     );
 };
 
+// ... keep existing subcomponents ...
 const ParticipantTile = ({ track, participant, isLocal }) => {
     const isSpeaking = useIsSpeaking(participant);
 

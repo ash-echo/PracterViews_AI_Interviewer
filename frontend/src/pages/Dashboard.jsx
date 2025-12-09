@@ -64,6 +64,14 @@ const TiltCard = ({ children, className, onClick, delay = 0 }) => {
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+
+    const handleGlobalMouseMove = ({ clientX, clientY, currentTarget }) => {
+        const { left, top } = currentTarget.getBoundingClientRect();
+        mouseX.set(clientX - left);
+        mouseY.set(clientY - top);
+    };
 
     const interviews = [
         {
@@ -139,7 +147,20 @@ const Dashboard = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-[#030014] text-foreground p-6 md:p-12 font-sans selection:bg-purple-500/50 relative overflow-hidden perspective-container">
+        <div
+            className="min-h-screen bg-[#030014] text-foreground p-6 md:p-12 font-sans selection:bg-purple-500/50 relative overflow-hidden perspective-container group"
+            onMouseMove={handleGlobalMouseMove}
+        >
+            {/* Mouse Spotlight Effect */}
+            <motion.div
+                className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-300 opacity-60"
+                style={{
+                    background: useTransform(
+                        [mouseX, mouseY],
+                        ([x, y]) => `radial-gradient(600px circle at ${x}px ${y}px, rgba(99,102,241,0.15), transparent 40%)`
+                    )
+                }}
+            />
 
             {/* 3D Grid & Ambient Background */}
             <div className="fixed inset-0 z-0 pointer-events-none">
@@ -219,7 +240,7 @@ const Dashboard = () => {
                         <div className="hidden md:block h-px w-64 bg-gradient-to-l from-transparent to-indigo-500/30" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 perspective-container">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 perspective-container relative z-10">
                         {interviews.map((item, idx) => (
                             <TiltCard
                                 key={item.id}
