@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRoomContext } from '@livekit/components-react';
-import { Github, Send, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Github, Send, CheckCircle, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const GithubInput = () => {
     const room = useRoomContext();
@@ -17,7 +18,7 @@ const GithubInput = () => {
 
     const fetchGitHubData = async () => {
         if (!username.trim()) {
-            setError('Please enter a GitHub username or URL');
+            setError('Please enter a username');
             setStatus('error');
             return;
         }
@@ -32,9 +33,9 @@ const GithubInput = () => {
 
             if (!response.ok) {
                 if (response.status === 404) {
-                    throw new Error('GitHub user not found');
+                    throw new Error('User not found');
                 }
-                throw new Error('Failed to fetch GitHub data');
+                throw new Error('Failed to fetch data');
             }
 
             const repos = await response.json();
@@ -68,7 +69,7 @@ ${summary.map((r, i) => `${i + 1}. ${r.name} (${r.language}) - ${r.description} 
 
         } catch (err) {
             console.error('[GithubInput] Error:', err);
-            setError(err.message || 'Failed to fetch GitHub data');
+            setError(err.message || 'Fetch failed');
             setStatus('error');
         }
     };
@@ -80,13 +81,8 @@ ${summary.map((r, i) => `${i + 1}. ${r.name} (${r.language}) - ${r.description} 
     };
 
     return (
-        <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                <Github className="w-4 h-4 text-indigo-400" />
-                GitHub Profile
-            </div>
-
-            <div className="flex gap-2">
+        <div className="space-y-4">
+            <div className="relative group">
                 <input
                     type="text"
                     value={username}
@@ -95,54 +91,59 @@ ${summary.map((r, i) => `${i + 1}. ${r.name} (${r.language}) - ${r.description} 
                         if (status === 'error') setStatus('idle');
                     }}
                     onKeyDown={handleKeyDown}
-                    placeholder="username or github.com/username"
+                    placeholder="github.com/username"
                     disabled={status === 'loading' || status === 'success'}
                     className={`
-                        flex-1 px-4 py-3 rounded-xl text-sm
-                        bg-white/5 border transition-all
-                        placeholder:text-gray-500 focus:outline-none
+                        w-full pl-11 pr-12 py-3.5 rounded-xl text-sm font-medium
+                        bg-white/5 border transition-all duration-300
+                        placeholder:text-muted focus:outline-none
                         ${status === 'success'
-                            ? 'border-green-500/50 text-green-400'
+                            ? 'border-green-500/50 text-green-400 bg-green-500/10'
                             : status === 'error'
-                                ? 'border-red-500/50 text-red-400'
-                                : 'border-white/10 focus:border-indigo-500/50'}
+                                ? 'border-red-500/50 text-red-400 bg-red-500/10'
+                                : 'border-white/10 focus:border-primary/50 focus:bg-white/10'}
                     `}
                 />
 
+                <Github className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${status === 'error' ? 'text-red-400' : 'text-muted group-focus-within:text-foreground'}`} />
+
                 <button
                     onClick={fetchGitHubData}
-                    disabled={status === 'loading' || status === 'success'}
-                    className={`
-                        p-3 rounded-xl transition-all
-                        ${status === 'success'
-                            ? 'bg-green-500/20 text-green-400'
-                            : status === 'loading'
-                                ? 'bg-white/5 text-gray-500'
-                                : 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'}
-                    `}
+                    disabled={status === 'loading' || status === 'success' || !username}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-white/10 disabled:opacity-50 disabled:hover:bg-transparent"
                 >
                     {status === 'loading' ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-5 h-5 text-primary animate-spin" />
                     ) : status === 'success' ? (
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="w-5 h-5 text-green-500" />
                     ) : (
-                        <Send className="w-5 h-5" />
+                        <div className={`p-1.5 rounded-md ${username ? 'bg-primary text-white' : 'text-muted'}`}>
+                            <ArrowRight className="w-4 h-4" />
+                        </div>
                     )}
                 </button>
             </div>
 
             {status === 'error' && (
-                <div className="flex items-center gap-2 text-xs text-red-400">
+                <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 text-xs text-red-400 px-1"
+                >
                     <AlertCircle className="w-3 h-3" />
                     {error}
-                </div>
+                </motion.div>
             )}
 
             {status === 'success' && (
-                <div className="flex items-center gap-2 text-xs text-green-400">
+                <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 text-xs text-green-400 px-1"
+                >
                     <CheckCircle className="w-3 h-3" />
-                    GitHub profile sent to interviewer
-                </div>
+                    <span>Profile successfully linked to context.</span>
+                </motion.div>
             )}
         </div>
     );
