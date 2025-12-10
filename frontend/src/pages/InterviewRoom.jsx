@@ -518,6 +518,16 @@ function solution() {
                     setEvaluationResult(null);
                     setShowIDE(true);
                 }
+
+                // Handle phase score from agent
+                if (data.type === 'PHASE_SCORE') {
+                    console.log(`[FRONTEND] Received phase score: ${data.phase} = ${data.score}`);
+                    setPhaseScores(prev => ({
+                        ...prev,
+                        [data.phase]: data.score
+                    }));
+                    setReceivedScores(prev => prev + 1); // Count received scores
+                }
             } catch (error) {
                 console.error('Error parsing data:', error);
             }
@@ -580,13 +590,22 @@ function solution() {
         }
     };
 
-    // Handle closing analysis popup - shows report
+    // State for waiting on phase scores
+    const [waitingForScores, setWaitingForScores] = useState(false);
+    const [receivedScores, setReceivedScores] = useState(0); // Count of received scores
+    const waitingForScoresRef = React.useRef(false); // Ref to track in timeout
+
+    // Handle closing analysis popup - waits for scores then shows report
     const handleCloseAnalysis = () => {
         setShowAnalysis(false);
         setShowIDE(false);
-        setInterviewPhase('report');
+        setWaitingForScores(true);
+        waitingForScoresRef.current = true;
+        setReceivedScores(0); // Reset counter
 
-        // Notify agent interview is complete
+        console.log('[FRONTEND] Waiting for phase scores before showing report...');
+
+        // Notify agent interview is complete - it will score phases and send scores back
         if (room && room.localParticipant) {
             room.localParticipant.publishData(
                 new TextEncoder().encode(JSON.stringify({
@@ -596,7 +615,27 @@ function solution() {
                 { reliable: true }
             );
         }
+
+        // Timeout fallback after 20 seconds
+        setTimeout(() => {
+            if (waitingForScoresRef.current) {
+                console.log('[FRONTEND] Timeout waiting for scores, showing report anyway');
+                waitingForScoresRef.current = false;
+                setWaitingForScores(false);
+                setInterviewPhase('report');
+            }
+        }, 20000);
     };
+
+    // Listen for phase scores and show report when all 3 received
+    useEffect(() => {
+        if (waitingForScores && receivedScores >= 3) {
+            console.log('[FRONTEND] All 3 scores received, showing report now');
+            waitingForScoresRef.current = false;
+            setWaitingForScores(false);
+            setInterviewPhase('report');
+        }
+    }, [waitingForScores, receivedScores]);
 
     const localTrack = tracks.find(t => t.participant.isLocal);
     const remoteTracks = tracks.filter(t => !t.participant.isLocal);
@@ -605,6 +644,27 @@ function solution() {
 
     return (
         <div className="h-full flex flex-col relative z-10 p-4 md:p-6">
+            {/* Loading Screen while waiting for scores */}
+            {waitingForScores && (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-6"></div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Generating Your Report</h2>
+                        <p className="text-gray-400 mb-4">Analyzing your interview performance...</p>
+                        <div className="flex justify-center gap-4 text-sm">
+                            <span className={`px-3 py-1 rounded-full ${phaseScores.resume > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-500'}`}>
+                                📄 Resume {phaseScores.resume > 0 ? '✓' : '...'}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full ${phaseScores.github > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-500'}`}>
+                                💻 GitHub {phaseScores.github > 0 ? '✓' : '...'}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full ${phaseScores.topic > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-500'}`}>
+                                🎯 Topic {phaseScores.topic > 0 ? '✓' : '...'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Top Bar HUD */}
             <header className="flex justify-between items-start mb-4">
                 <div className="flex flex-col">

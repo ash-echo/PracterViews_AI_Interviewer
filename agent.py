@@ -31,15 +31,34 @@ async def my_agent(ctx: agents.JobContext):
     session = AgentSession(
         llm=gemini_model
     )
-
+    
+    # Track conversation for phase scoring
+    conversation_history = []
+    current_phase = "introduction"
+    
+    # Store document content for scoring
+    resume_content = ""
+    github_content = ""
+    
     @session.on("conversation_item_added")
     def on_item_added(event: agents.ConversationItemAddedEvent):
+        nonlocal conversation_history, current_phase
         item = event.item
         if item.type == "message":
             if item.role == "assistant" and item.text_content:
                 print(f"Agent: {item.text_content}")
+                conversation_history.append({
+                    "role": "agent",
+                    "content": item.text_content,
+                    "phase": current_phase
+                })
             elif item.role == "user" and item.text_content:
                 print(f"User: {item.text_content}")
+                conversation_history.append({
+                    "role": "user", 
+                    "content": item.text_content,
+                    "phase": current_phase
+                })
 
     
     room_name = ctx.room.name
@@ -130,6 +149,11 @@ async def my_agent(ctx: agents.JobContext):
             
             if data_type == "RESUME_DATA":
                 print(f"[AGENT] Processing resume data...")
+                
+                # Store resume content for scoring later
+                nonlocal resume_content
+                resume_content = content
+                
                 # Inject resume context into the session
                 session.generate_reply(
                     instructions=f"""The candidate has shared their resume. Here is the content:
@@ -143,6 +167,11 @@ Acknowledge that you received their resume and ask a specific question about som
                 
             elif data_type == "GITHUB_DATA":
                 print(f"[AGENT] Processing GitHub data...")
+                
+                # Store github content for scoring later
+                nonlocal github_content
+                github_content = content
+                
                 # Inject GitHub context into the session
                 session.generate_reply(
                     instructions=f"""The candidate has shared their GitHub profile. Here is the summary:
@@ -280,9 +309,83 @@ INSTRUCTIONS FOR YOUR RESPONSE:
                 )
             
             elif data_type == "PHASE_CHANGE":
-                phase = payload.get("phase", "")
+                nonlocal current_phase
+                new_phase = payload.get("phase", "")
                 questions_required = payload.get("questionsRequired", 0)
-                print(f"[AGENT] Phase changed to: {phase}, Questions: {questions_required}")
+                previous_phase = current_phase
+                
+                print(f"[AGENT] Phase changing from {previous_phase} to {new_phase}")
+                
+                # Score the previous phase based on conversation
+                async def score_previous_phase():
+                    if previous_phase in ["resume", "github", "topic"]:
+                        # Get conversation from the previous phase
+                        phase_conversation = [msg for msg in conversation_history if msg["phase"] == previous_phase]
+                        
+                        if not phase_conversation:
+                            print(f"[AGENT] No conversation found for {previous_phase}, using default score")
+                            score = 60
+                        else:
+                            # Build transcript for AI evaluation
+                            transcript = "\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in phase_conversation])
+                            
+                            try:
+                                import google.generativeai as genai
+                                genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+                                model = genai.GenerativeModel('gemini-2.5-flash')
+                                
+                                phase_descriptions = {
+                                    "resume": "evaluating how well the candidate explained their work experience, projects, and skills from their resume",
+                                    "github": "evaluating how well the candidate explained their GitHub projects, technical decisions, and coding contributions",
+                                    "topic": "evaluating the candidate's technical knowledge and depth of understanding on interview topics"
+                                }
+                                
+                                scoring_prompt = f"""Evaluate this interview conversation for the {previous_phase.upper()} phase.
+
+PHASE DESCRIPTION: {phase_descriptions.get(previous_phase, 'general interview questions')}
+
+CONVERSATION TRANSCRIPT:
+{transcript}
+
+Score the candidate from 0-100 based on:
+- Clarity and depth of explanations (40%)
+- Technical accuracy and knowledge (30%)
+- Communication skills (20%)
+- Engagement and enthusiasm (10%)
+
+Return ONLY this JSON (no markdown, no explanation):
+{{"score": <0-100>}}"""
+
+                                response = model.generate_content(scoring_prompt)
+                                response_text = response.text.strip()
+                                if response_text.startswith("```"):
+                                    response_text = response_text.split("```")[1]
+                                    if response_text.startswith("json"):
+                                        response_text = response_text[4:]
+                                response_text = response_text.strip()
+                                
+                                result = json.loads(response_text)
+                                score = result.get("score", 70)
+                                print(f"[AGENT] {previous_phase} phase scored: {score}")
+                                
+                            except Exception as e:
+                                print(f"[AGENT] Phase scoring error for {previous_phase}: {e}")
+                                score = 70  # Default score on error
+                        
+                        # Send score to frontend
+                        await ctx.room.local_participant.publish_data(
+                            json.dumps({
+                                "type": "PHASE_SCORE",
+                                "phase": previous_phase,
+                                "score": score
+                            }).encode(),
+                            reliable=True
+                        )
+                
+                asyncio.create_task(score_previous_phase())
+                
+                # Update current phase
+                current_phase = new_phase
                 
                 # More direct, action-oriented instructions that trigger immediate response
                 phase_instructions = {
@@ -317,8 +420,8 @@ Say: "That concludes our interview! Thank you so much for your time today. You d
 Wait for their response, then provide constructive feedback if they say yes."""
                 }
                 
-                instruction = phase_instructions.get(phase, "Continue the interview. Ask the candidate a relevant question now.")
-                print(f"[AGENT] Sending phase instruction for: {phase}")
+                instruction = phase_instructions.get(new_phase, "Continue the interview. Ask the candidate a relevant question now.")
+                print(f"[AGENT] Sending phase instruction for: {new_phase}")
                 session.generate_reply(instructions=instruction)
                 
             elif data_type == "INTERVIEW_SKIPPED":
@@ -333,7 +436,132 @@ Keep it brief and non-judgmental."""
                 )
             
             elif data_type == "INTERVIEW_COMPLETE":
-                print(f"[AGENT] Interview complete - showing final report")
+                print(f"[AGENT] Interview complete - scoring all phases and showing final report")
+                
+                # Score all phases - resume/github based on document content, topic based on conversation
+                async def score_all_phases():
+                    try:
+                        import google.generativeai as genai
+                        genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+                        model = genai.GenerativeModel('gemini-2.5-flash')
+                        
+                        scores = {"resume": 0, "github": 0, "topic": 0}
+                        
+                        # Score RESUME based on document content
+                        if resume_content:
+                            resume_prompt = f"""Evaluate this resume for a technical interview. Score the DOCUMENT QUALITY.
+
+RESUME CONTENT:
+{resume_content}
+
+Score from 0-100 based on:
+- Technical skills and technologies listed (30%)
+- Quality and relevance of projects described (35%)
+- Work experience and achievements (20%)
+- Education and certifications (15%)
+
+Return ONLY this JSON (no markdown): {{"score": <0-100>}}"""
+
+                            response = model.generate_content(resume_prompt)
+                            response_text = response.text.strip()
+                            if response_text.startswith("```"):
+                                response_text = response_text.split("```")[1]
+                                if response_text.startswith("json"):
+                                    response_text = response_text[4:]
+                            result = json.loads(response_text.strip())
+                            scores["resume"] = result.get("score", 70)
+                            print(f"[AGENT] Resume document scored: {scores['resume']}")
+                        else:
+                            scores["resume"] = 0
+                            print("[AGENT] No resume uploaded, score = 0")
+                        
+                        # Score GITHUB based on document content
+                        if github_content:
+                            github_prompt = f"""Evaluate this GitHub profile for a technical interview. Score the PROFILE QUALITY.
+
+GITHUB PROFILE:
+{github_content}
+
+Score from 0-100 based on:
+- Number and quality of repositories (35%)
+- Technical variety and complexity (30%)
+- Project descriptions and documentation (20%)
+- Recent activity and contributions (15%)
+
+Return ONLY this JSON (no markdown): {{"score": <0-100>}}"""
+
+                            response = model.generate_content(github_prompt)
+                            response_text = response.text.strip()
+                            if response_text.startswith("```"):
+                                response_text = response_text.split("```")[1]
+                                if response_text.startswith("json"):
+                                    response_text = response_text[4:]
+                            result = json.loads(response_text.strip())
+                            scores["github"] = result.get("score", 70)
+                            print(f"[AGENT] GitHub profile scored: {scores['github']}")
+                        else:
+                            scores["github"] = 0
+                            print("[AGENT] No GitHub uploaded, score = 0")
+                        
+                        # Score TOPIC based on conversation quality
+                        transcript = "\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in conversation_history])
+                        
+                        if transcript:
+                            topic_prompt = f"""Evaluate the candidate's VERBAL ANSWERS during this interview.
+
+INTERVIEW TRANSCRIPT:
+{transcript}
+
+Score from 0-100 based on:
+- Depth and quality of technical explanations (40%)
+- Knowledge accuracy and understanding (30%)
+- Communication clarity (20%)
+- Engagement and confidence (10%)
+
+Return ONLY this JSON (no markdown): {{"score": <0-100>}}"""
+
+                            response = model.generate_content(topic_prompt)
+                            response_text = response.text.strip()
+                            if response_text.startswith("```"):
+                                response_text = response_text.split("```")[1]
+                                if response_text.startswith("json"):
+                                    response_text = response_text[4:]
+                            result = json.loads(response_text.strip())
+                            scores["topic"] = result.get("score", 70)
+                            print(f"[AGENT] Topic conversation scored: {scores['topic']}")
+                        else:
+                            scores["topic"] = 50
+                            print("[AGENT] No conversation to score, using default 50")
+                        
+                        print(f"[AGENT] All phases scored: {scores}")
+                        
+                        # Send all scores to frontend
+                        for phase in ["resume", "github", "topic"]:
+                            await ctx.room.local_participant.publish_data(
+                                json.dumps({
+                                    "type": "PHASE_SCORE",
+                                    "phase": phase,
+                                    "score": scores[phase]
+                                }).encode(),
+                                reliable=True
+                            )
+                            print(f"[AGENT] Sent {phase} score: {scores[phase]}")
+                        
+                    except Exception as e:
+                        print(f"[AGENT] Phase scoring error: {e}")
+                        # Send default scores on error
+                        for phase in ["resume", "github", "topic"]:
+                            await ctx.room.local_participant.publish_data(
+                                json.dumps({
+                                    "type": "PHASE_SCORE",
+                                    "phase": phase,
+                                    "score": 70
+                                }).encode(),
+                                reliable=True
+                            )
+                
+                asyncio.create_task(score_all_phases())
+                
                 session.generate_reply(
                     instructions="""START SPEAKING NOW. The interview is officially complete.
 
