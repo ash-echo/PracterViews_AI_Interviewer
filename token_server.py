@@ -26,6 +26,16 @@ class TokenHandler(BaseHTTPRequestHandler):
                 query_components = parse_qs(urlparse(self.path).query)
                 interview_type = query_components.get('type', ['default'])[0]
 
+                # Validate interview type
+                VALID_TYPES = [
+                    "frontend", "backend", "fullstack", "devops", 
+                    "aiml", "dsa", "hr", "hackathon", "general", "default"
+                ]
+                
+                if interview_type not in VALID_TYPES:
+                    print(f"[TOKEN_SERVER] Invalid type '{interview_type}', defaulting to 'default'")
+                    interview_type = "default"
+
                 
                 token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
                 
@@ -64,6 +74,9 @@ class TokenHandler(BaseHTTPRequestHandler):
                     "type": interview_type,
                     "room": room_name
                 }
+                
+                print(f"[TOKEN_SERVER] Returning URL: {LIVEKIT_URL}")
+                print(f"[TOKEN_SERVER] Room: {room_name}")
                 self.wfile.write(json.dumps(response).encode())
             except Exception as e:
                 print(f"Error generating token: {str(e)}")
